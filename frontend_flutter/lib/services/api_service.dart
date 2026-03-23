@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/physics_models.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8000/api';
+  static const String baseUrl = 'https://learnviz-backend.onrender.com';
 
   static Future<List<Module>> getModules() async {
     final response = await http.get(Uri.parse('$baseUrl/modules'));
