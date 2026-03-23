@@ -4,3 +4,4 @@ pydantic
 python-multipart
 sqlmodel
 psycopg2-binary
+passlib[bcrypt]
