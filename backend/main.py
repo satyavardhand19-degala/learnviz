@@ -178,3 +178,7 @@ def calculate_experiment(experiment_id: int, params: Dict, session: Session = De
     if not exp:
         raise HTTPException(status_code=404, detail="Experiment not found")
     return exp.calculate_results(params)
+
+@app.get("/")
+def root():
+    return {"message": "API is running 🚀"}
