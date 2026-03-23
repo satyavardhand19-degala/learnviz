@@ -1,9 +1,13 @@
 from sqlmodel import create_engine, SQLModel, Session
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5432/learnvis_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "DATABASE_URL = "sqlite:///./test.db"")
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    connect_args={"check_same_thread": False}  # ✅ IMPORTANT
+)
 
 def get_session():
     with Session(engine) as session:
