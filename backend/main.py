@@ -109,6 +109,32 @@ def get_experiments(module_id: int, session: Session = Depends(get_session)):
     return session.exec(select(Experiment).where(Experiment.module_id == module_id)).all()
 
 
+@app.post("/api/calculate/{experiment_id}")
+def calculate_experiment(experiment_id: int, params: Dict, session: Session = Depends(get_session)):
+    experiment = session.get(Experiment, experiment_id)
+    if not experiment:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    return experiment.calculate_results(params)
+
+
+@app.get("/api/formulas/{experiment_id}")
+def get_formulas(experiment_id: int, session: Session = Depends(get_session)):
+    experiment = session.get(Experiment, experiment_id)
+    if not experiment:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    formulas = session.exec(select(Formula).where(Formula.experiment_id == experiment_id)).all()
+    return formulas
+
+
+@app.get("/api/quizzes/{experiment_id}")
+def get_quizzes(experiment_id: int, session: Session = Depends(get_session)):
+    experiment = session.get(Experiment, experiment_id)
+    if not experiment:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    quizzes = session.exec(select(Quiz).where(Quiz.experiment_id == experiment_id)).all()
+    return quizzes
+
+
 # ================================
 # ✅ FRONTEND API (NEW)
 # ================================

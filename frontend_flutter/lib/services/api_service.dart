@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import '../models/physics_models.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://learnviz-backend.onrender.com';
-
+  static const baseUrl = "http://localhost:8000/api";
+  
   static Future<List<Module>> getModules() async {
     final response = await http.get(Uri.parse('$baseUrl/modules'));
     if (response.statusCode == 200) {
@@ -15,12 +15,16 @@ class ApiService {
   }
 
   static Future<List<Experiment>> getExperiments(int moduleId) async {
-    final response = await http.get(Uri.parse('$baseUrl/experiments/$moduleId'));
+    final response = await http.get(
+      Uri.parse("$baseUrl/experiments/$moduleId"),
+    );
+  
     if (response.statusCode == 200) {
       List<dynamic> body = jsonDecode(response.body);
       return body.map((e) => Experiment.fromJson(e)).toList();
+    } else {
+      throw Exception("Failed to load experiments");
     }
-    throw Exception('Failed to load experiments');
   }
 
   static Future<List<Formula>> getFormulas(int experimentId) async {

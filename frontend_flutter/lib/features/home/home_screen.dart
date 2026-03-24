@@ -1,26 +1,27 @@
-import '../../data/experiments.dart'; // ✅ FIXED
+import '../../data/experiments.dart';
 import 'package:flutter/material.dart';
 import '../../models/physics_models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_card.dart';
+
 import '../mechanics/projectile_simulation_screen.dart';
 import '../optics/ray_simulation_screen.dart';
 import '../electricity/circuit_simulation_screen.dart';
 import '../waves/wave_simulation_screen.dart';
 import '../modern_physics/photoelectric_simulation_screen.dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Module>> modulesFuture;
   Module? selectedModule;
   List<Experiment> experiments = [];
+  bool isLoadingExperiments = false;
 
   @override
   void initState() {
@@ -34,22 +35,21 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedModule = module;
       experiments = [];
     });
-
+  
     try {
       final exps = await ApiService.getExperiments(module.id);
-
+  
       if (exps.isEmpty) {
         final local = moduleExperiments[module.name] ?? [];
-
+  
         setState(() {
-          experiments = local.map<Experiment>((e) {
+          experiments = local.map((e) {
             return Experiment(
               id: 0,
               name: e.title,
               description: e.description,
               difficultyLevel: "Basic",
               moduleId: module.id,
-              initialParams: {}, // ✅ FIX
             );
           }).toList();
         });
@@ -60,23 +60,40 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       final local = moduleExperiments[module.name] ?? [];
-
+  
       setState(() {
-        experiments = local.map<Experiment>((e) {
+        experiments = local.map((e) {
           return Experiment(
             id: 0,
             name: e.title,
             description: e.description,
             difficultyLevel: "Basic",
             moduleId: module.id,
-            initialParams: {}, // ✅ FIX
           );
         }).toList();
       });
     }
   }
 
+  // ✅ LOCAL FALLBACK
+  void _loadLocalExperiments(Module module) {
+    final local = moduleExperiments[module.name] ?? [];
 
+    setState(() {
+      experiments = local.map<Experiment>((e) {
+        return Experiment(
+          id: 0,
+          name: e.title,
+          description: e.description,
+          difficultyLevel: "Basic",
+          moduleId: module.id,
+          initialParams: {}, // ✅ REQUIRED FIX
+        );
+      }).toList();
+    });
+  }
+
+  // ✅ NAVIGATION
   void _openSimulation(String name) {
     switch (name) {
       case "Projectile Motion":
@@ -85,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
           MaterialPageRoute(builder: (_) => const ProjectileSimulationScreen()),
         );
         break;
-  
+
       case "Ray Diagram":
         Navigator.push(
           context,
@@ -114,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (_) => const PhotoelectricSimulationScreen()),
         );
         break;
-  
+
       default:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$name simulation coming soon!')),
@@ -128,19 +145,17 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
             colors: [
               Color(0xFF0F2027),
               Color(0xFF203A43),
-              Color(0xFF2C5364)
+              Color(0xFF2C5364),
             ],
           ),
         ),
         child: SafeArea(
           child: Row(
             children: [
-              // SIDEBAR
+              // 🔷 SIDEBAR
               Container(
                 width: 250,
                 padding: const EdgeInsets.all(16),
@@ -153,22 +168,36 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Text(
                       "Learnvis",
                       style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.cyan),
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.cyan,
+                      ),
                     ),
                     const SizedBox(height: 30),
-                    const Text("MODULES",
-                        style: TextStyle(
-                            letterSpacing: 1.5, color: Colors.white54)),
+                    const Text(
+                      "MODULES",
+                      style: TextStyle(
+                        letterSpacing: 1.5,
+                        color: Colors.white54,
+                      ),
+                    ),
                     const SizedBox(height: 10),
+
                     Expanded(
                       child: FutureBuilder<List<Module>>(
                         future: modulesFuture,
                         builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
                             return const Center(
                                 child: CircularProgressIndicator());
+                          }
+
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const Center(
+                              child: Text("No modules found",
+                                  style: TextStyle(color: Colors.white54)),
+                            );
                           }
 
                           final modules = snapshot.data!;
@@ -181,15 +210,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                   selectedModule?.id == m.id;
 
                               return ListTile(
-                                leading: Icon(_getIcon(m.icon),
+                                leading: Icon(
+                                  _getIcon(m.icon),
+                                  color: isSelected
+                                      ? Colors.cyan
+                                      : Colors.white70,
+                                ),
+                                title: Text(
+                                  m.name,
+                                  style: TextStyle(
                                     color: isSelected
                                         ? Colors.cyan
-                                        : Colors.white70),
-                                title: Text(m.name,
-                                    style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.cyan
-                                            : Colors.white)),
+                                        : Colors.white,
+                                  ),
+                                ),
                                 selected: isSelected,
                                 onTap: () => _onModuleSelected(m),
                               );
@@ -202,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // MAIN CONTENT
+              // 🔷 MAIN CONTENT
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
@@ -212,83 +246,93 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         selectedModule?.name ?? "Select a Module",
                         style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Text(
                         selectedModule?.description ??
                             "Explore physics simulations",
                         style: const TextStyle(
-                            fontSize: 18, color: Colors.white70),
+                          fontSize: 18,
+                          color: Colors.white70,
+                        ),
                       ),
                       const SizedBox(height: 40),
 
                       Expanded(
-                        child: experiments.isEmpty
+                        child: isLoadingExperiments
                             ? const Center(
-                                child: Text(
-                                  "No experiments available",
-                                  style:
-                                      TextStyle(color: Colors.white54),
-                                ),
+                                child: CircularProgressIndicator(),
                               )
-                            : GridView.builder(
-                                itemCount: experiments.length,
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 20,
-                                  mainAxisSpacing: 20,
-                                  childAspectRatio: 1.2,
-                                ),
-                                itemBuilder: (context, index) {
-                                  final exp = experiments[index];
+                            : experiments.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      "No experiments available",
+                                      style:
+                                          TextStyle(color: Colors.white54),
+                                    ),
+                                  )
+                                : GridView.builder(
+                                    itemCount: experiments.length,
+                                    gridDelegate:
+                                        const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 3,
+                                      crossAxisSpacing: 20,
+                                      mainAxisSpacing: 20,
+                                      childAspectRatio: 1.2,
+                                    ),
+                                    itemBuilder: (context, index) {
+                                      final exp = experiments[index];
 
-                                  return GestureDetector(
-                                    onTap: () =>
-                                        _openSimulation(exp.name),
-                                    child: GlassCard(
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.all(20),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Icon(Icons.science,
-                                                color: Colors.cyan,
-                                                size: 40),
-                                            const SizedBox(height: 15),
-                                            Text(exp.name,
-                                                style: const TextStyle(
+                                      return GestureDetector(
+                                        onTap: () =>
+                                            _openSimulation(exp.name),
+                                        child: GlassCard(
+                                          child: Padding(
+                                            padding:
+                                                const EdgeInsets.all(20),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Icon(Icons.science,
+                                                    color: Colors.cyan,
+                                                    size: 40),
+                                                const SizedBox(height: 15),
+                                                Text(
+                                                  exp.name,
+                                                  style: const TextStyle(
                                                     fontSize: 20,
                                                     fontWeight:
                                                         FontWeight.bold,
-                                                    color: Colors.white)),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              exp.description ?? "",
-                                              maxLines: 2,
-                                              overflow:
-                                                  TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                  color:
-                                                      Colors.white70),
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  exp.description ?? "",
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                      color: Colors.white70),
+                                                ),
+                                                const Spacer(),
+                                                Text(
+                                                  exp.difficultyLevel,
+                                                  style: const TextStyle(
+                                                      color: Colors.white54),
+                                                ),
+                                              ],
                                             ),
-                                            const Spacer(),
-                                            Text(exp.difficultyLevel,
-                                                style: const TextStyle(
-                                                    color:
-                                                        Colors.white54)),
-                                          ],
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                                      );
+                                    },
+                                  ),
                       ),
                     ],
                   ),
